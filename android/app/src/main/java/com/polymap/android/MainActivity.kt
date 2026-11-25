@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -47,10 +48,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var timeTableSmallButton: TextView
     private var pendingIntent: Intent? = null
     private var safeBottom = 0
+    private val navigateBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            mapInfo.pop(true)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        onBackPressedDispatcher.addCallback(this, navigateBackCallback)
         val crash = CrashLog.take(this)
         if (crash != null) {
             CrashLog.showScreen(this, crash) { buildUi(savedInstanceState) }
@@ -103,7 +110,9 @@ class MainActivity : AppCompatActivity() {
         root.addView(sheet.dimView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         root.addView(sheet, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
-        mapInfo = MapInfo(this, sheet)
+        mapInfo = MapInfo(this, sheet) { canGoBack ->
+            navigateBackCallback.isEnabled = canGoBack
+        }
         if (!noMap) {
             mapInfo.mapViewDelegate = mapView
             mapView.mapInfoDelegate = mapInfo
@@ -250,13 +259,6 @@ class MainActivity : AppCompatActivity() {
     override fun onLowMemory() { super.onLowMemory(); if (hasMap) mapView.onLowMemory() }
     override fun onDestroy() { super.onDestroy(); if (hasMap) mapView.onDestroy() }
     override fun onSaveInstanceState(outState: Bundle) { super.onSaveInstanceState(outState); if (hasMap) mapView.onSaveInstanceState(outState) }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (::sheet.isInitialized && sheet.pages.size > 1) { mapInfo.pop(true); return }
-        @Suppress("DEPRECATION")
-        super.onBackPressed()
-    }
 
     companion object {
         var currentVenue: Venue? = null

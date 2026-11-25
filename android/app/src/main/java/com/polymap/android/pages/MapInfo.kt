@@ -27,7 +27,11 @@ interface ExclusiveRouteDetail {
 }
 
 /** MapInfo port: coordinates the bottom sheet pages with the map. */
-class MapInfo(private val context: Context, val container: BottomSheetContainer) : MapInfoDelegate, RouteDetail, ExclusiveRouteDetail {
+class MapInfo(
+    private val context: Context,
+    val container: BottomSheetContainer,
+    private val onBackStackChanged: (Boolean) -> Unit = {}
+) : MapInfoDelegate, RouteDetail, ExclusiveRouteDetail {
     enum class Page { SEARCH, ANNOTATION_INFO, ROUTE, EXCLUSIVE_ROUTE, UNKNOWN }
 
     var searchable: List<Searchable> = emptyList()
@@ -75,6 +79,7 @@ class MapInfo(private val context: Context, val container: BottomSheetContainer)
             is SearchPage -> Page.SEARCH
             else -> Page.UNKNOWN
         }
+        onBackStackChanged(container.pages.size > 1)
     }
 
     fun pop(animated: Boolean): BottomSheetPage? {
@@ -86,6 +91,7 @@ class MapInfo(private val context: Context, val container: BottomSheetContainer)
         pages.removeAt(pages.size - 1)
         container.pages.lastOrNull()?.let { onPopTo(it) }
         onPop(popped)
+        onBackStackChanged(container.pages.size > 1)
         return popped
     }
 
@@ -101,6 +107,7 @@ class MapInfo(private val context: Context, val container: BottomSheetContainer)
             onPop(p)
         }
         onPopTo(page)
+        onBackStackChanged(container.pages.size > 1)
     }
 
     private fun onPop(page: BottomSheetPage) {

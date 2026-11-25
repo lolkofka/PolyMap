@@ -6,6 +6,18 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Keep upload credentials outside the repository. With no credentials, release bundles are unsigned.
+val uploadSigning = listOf(
+    "POLYMAP_UPLOAD_STORE_FILE",
+    "POLYMAP_UPLOAD_STORE_PASSWORD",
+    "POLYMAP_UPLOAD_KEY_ALIAS",
+    "POLYMAP_UPLOAD_KEY_PASSWORD"
+).associateWith { providers.environmentVariable(it).orNull }
+val hasUploadSigning = uploadSigning.values.any { it != null }
+require(!hasUploadSigning || uploadSigning.values.all { !it.isNullOrBlank() }) {
+    "Set all four POLYMAP_UPLOAD_* environment variables to configure release signing."
+}
+
 android {
     namespace = "com.polymap.android"
     compileSdk = 36
@@ -13,16 +25,28 @@ android {
     defaultConfig {
         applicationId = "com.polymap.android"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 6
         versionName = "1.1.1"
         buildConfigField("String", "BUILD_TIME", "\"" + SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date()) + "\"")
         vectorDrawables.useSupportLibrary = true
     }
 
+    signingConfigs {
+        if (hasUploadSigning) {
+            create("upload") {
+                storeFile = file(uploadSigning.getValue("POLYMAP_UPLOAD_STORE_FILE")!!)
+                storePassword = uploadSigning.getValue("POLYMAP_UPLOAD_STORE_PASSWORD")
+                keyAlias = uploadSigning.getValue("POLYMAP_UPLOAD_KEY_ALIAS")
+                keyPassword = uploadSigning.getValue("POLYMAP_UPLOAD_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         debug { buildConfigField("boolean", "CRASH_SCREEN", "true") }
         release {
+            signingConfig = signingConfigs.findByName("upload")
             buildConfigField("boolean", "CRASH_SCREEN", "false")
             isMinifyEnabled = false
         }
